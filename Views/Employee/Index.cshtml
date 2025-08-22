@@ -1,0 +1,243 @@
+@using HrCrud.Models
+@{
+    ViewData["Title"] = "Employee CRUD";
+}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Employee / HR</h2>
+        <button class="btn btn-primary" id="btnAdd">+ Add Employee</button>
+    </div>
+
+    <div class="input-group mb-3">
+        <input id="search" class="form-control" placeholder="Search NIK / Name">
+        <button class="btn btn-outline-secondary" id="btnSearch">Search</button>
+        <button class="btn btn-outline-secondary" id="btnClear">Clear</button>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle" id="tbl">
+            <thead class="table-light">
+                <tr>
+                    <th>NIK</th><th>Name</th><th>Place & DOB</th>
+                    <th class="text-end">Basic Salary</th>
+                    <th>Gender</th><th>Status</th><th style="width:120px"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Form -->
+<div class="modal fade" id="empModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form id="empForm">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Add Employee</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" name="Id" id="Id" />
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">NIK</label>
+                    <input type="number" class="form-control" name="NIK" id="NIK" required minlength="5" maxlength="20" />
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Name</label>
+                    <input class="form-control" name="Name" id="Name" required maxlength="80" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Place of Birth</label>
+                    <input class="form-control" name="PlaceOfBirth" id="PlaceOfBirth" required maxlength="60" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Date of Birth</label>
+                    <input type="date" class="form-control" name="DateOfBirth" id="DateOfBirth" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Basic Salary</label>
+                    <input type="number" class="form-control" name="BasicSalary" id="BasicSalary" required min="1000000" max="1000000000" step="1000" />
+                    <div class="form-text">1.000.000 – 1.000.000.000</div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Gender</label>
+                    <select class="form-select" name="Gender" id="Gender" required>
+                        <option value="">--</option>
+                        <option value="0">P</option>
+                        <option value="1">L</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Marital Status</label>
+                    <select class="form-select" name="MaritalStatus" id="MaritalStatus" required>
+                        <option value="">--</option>
+                        <option value="0">Single</option>
+                        <option value="1">Married</option>
+                        <option value="2">Divorced</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Close</button>
+          <button class="btn btn-primary" type="submit" id="btnSave">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+@section Scripts{
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/4.0.0/jquery.validate.unobtrusive.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        const modal = new bootstrap.Modal(document.getElementById('empModal'));
+        
+        function rupiah(n){ return new Intl.NumberFormat('id-ID').format(n); }
+        
+        function load(q=''){
+            $.getJSON('/Employee/List', { q }, function(rows){
+                const tbody = $('#tbl tbody').empty();
+                if(rows.length === 0){
+                    tbody.append(`<tr><td colspan="7" class="text-center text-muted">No data</td></tr>`);
+                    return;
+                }
+                rows.forEach(r=>{
+                    tbody.append(`
+                        <tr data-id="${r.id}">
+                          <td>${r.nik}</td>
+                          <td>${r.name}</td>
+                          <td>${r.placeOfBirth}, ${r.dob}</td>
+                          <td class="text-end">${rupiah(r.basicSalary)}</td>
+                          <td>${r.gender}</td>
+                          <td>${r.marital}</td>
+                          <td class="text-end">
+                            <button class="btn btn-sm btn-outline-primary me-1 btn-edit">Edit</button>
+                            <button class="btn btn-sm btn-outline-danger btn-del">Del</button>
+                          </td>
+                        </tr>`);
+                });
+            });
+        }
+        
+        function resetForm(){
+            $('#empForm')[0].reset();
+            $('#Id').val('');
+            $('#empForm').find('.is-invalid').removeClass('is-invalid');
+        }
+        
+        $('#btnAdd').on('click', ()=>{
+            resetForm();
+            $('#modalTitle').text('Add Employee');
+            modal.show();
+        });
+        
+        $('#btnSearch').on('click', ()=> load($('#search').val()));
+        $('#btnClear').on('click', ()=> { $('#search').val(''); load(); });
+        
+        $('#tbl').on('click', '.btn-edit', function(){
+            const id = $(this).closest('tr').data('id');
+            $.getJSON('/Employee/Get',{id}, function(x){
+                resetForm();
+                $('#modalTitle').text('Edit Employee');
+                $('#Id').val(x.id);
+                $('#NIK').val(x.nik);
+                $('#Name').val(x.name);
+                $('#PlaceOfBirth').val(x.placeOfBirth);
+                $('#DateOfBirth').val(x.dob);
+                $('#BasicSalary').val(x.basicSalary);
+                $('#Gender').val(x.gender);
+                $('#MaritalStatus').val(x.maritalStatus);
+                modal.show();
+            });
+        });
+        
+        $('#tbl').on('click', '.btn-del', function(){
+            const id = $(this).closest('tr').data('id');
+        
+            Swal.fire({
+                title: 'Yakin hapus?',
+                text: "Data karyawan akan dihapus permanen!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, hapus!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('/Employee/Delete', { id })
+                        .done(() => {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Terhapus',
+                                text: 'Data karyawan berhasil dihapus.'
+                            }).then(() => {
+                                load(); // reload tabel setelah swal ditutup
+                            });
+                        })
+                        .fail(err => {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: err.responseText || 'Terjadi kesalahan saat menghapus data.'
+                            });
+                        });
+                }
+            });
+        });
+        
+        
+        $('#empForm').on('submit', function(e){
+            e.preventDefault();
+        
+            if(!$(this).valid()){ return; }
+        
+            const data = $(this).serialize();
+            const hasId = $('#Id').val() !== '';
+            const url = hasId ? '/Employee/Update' : '/Employee/Create';
+        
+            $.post(url, data)
+                .done(()=>{
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: hasId ? 'Data berhasil diperbarui!' : 'Data berhasil ditambahkan!',
+                        confirmButtonText: 'OK'
+                    }).then(() => {
+                        modal.hide();
+                        load();
+                    });
+                })
+                .fail(xhr=>{
+                    if(xhr.status === 400 && xhr.responseJSON){
+                        const errors = xhr.responseJSON;
+                        Object.keys(errors).forEach(k=>{
+                            const el = $('[name="'+k+'"]');
+                            el.addClass('is-invalid');
+                        });
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Validasi Gagal',
+                            text: 'Silakan perbaiki data yang belum sesuai.'
+                        });
+                    }else{
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: xhr.responseText || 'Terjadi kesalahan saat menyimpan data.'
+                        });
+                    }
+                });
+        });
+        
+        
+        $(document).ready(()=> load());
+</script>
+}
